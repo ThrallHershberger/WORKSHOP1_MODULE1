@@ -1,8 +1,43 @@
 ---
-title: "Keystone exercise"
+title: "Keystone Exercise"
 author: "Thrall J. Hershberger"
-format: html
-editor: visual
+date: today
+
+# Output Config
+format: 
+  # HTML Output
+  html:
+    theme: cosmo          # Modern Bootstrap theme with clean typography
+    highlight-style: a11y # High-contrast syntax highlighting for code
+    toc: true             # Includes a Table of Contents
+    toc-depth: 3          # Captures down to sub-subsections (e.g., 3.1.1)
+    toc-location: left    # Pins TOC to left sidebar so it doesn't block main page
+    toc-title: "Contents" # Custom title for the TOC sidebar
+    number-sections: true # Numbers sections automatically (e.g., 1, 1.1, 2)
+    code-fold: true       # Collapses code blocks by default under a dropdown
+    code-summary: "Show code" # Label text on collapsed code blocks
+    code-tools: true      # Adds global code menu (Show/Hide All Code) at top right
+    code-copy: true       # Adds a one-click copy button to code blocks
+    embed-resources: true # Bundles images/CSS into a single stand-alone HTML file
+    df-print: paged       # Formats data frames into interactive paged tables
+    fig-height: 5         # Default plot height in inches
+    fig-width: 8          # Default plot width in inches
+    #fig-responsive: true # Scales figures smoothly across screen sizes
+    smooth-scroll: true   # Enables smooth scrolling when clicking TOC links
+    
+# Code Execution Defaults across all chunks
+execute:
+  echo: true              # Display source code alongside outputs
+  eval: true              # Execute the code in the chunk
+  include: true           # Include the chunk in the final rendered document
+  warning: false          # Suppress warning messages in final rendered document
+  message: false          # Suppress package/function load messages in rendered output
+  knitr:
+    opts_chunk: 
+      comment: "#>"       # Clean output prefix for console printed output
+      dev: "cairo_pdf"    # Uses high-quality Cairo device for crisp vector graphics in PDF
+
+  
 ---
 ```{r}
 #Load Packages
@@ -42,6 +77,8 @@ catch_log <- catch_sheets |>
     .id = "sheet"
   ) |>
   clean_names()
+
+names(catch_log)
 ```
 
 ```{r}
@@ -62,6 +99,11 @@ catch_log <- catch_log |>
 ```
 
 ```{r}
+head(catch_log)
+```
+
+
+```{r}
 # 3. READ THE OTHER THREE DATASETS 
 
 metadata <- read_csv("estuary_metadata.csv") |>
@@ -73,12 +115,23 @@ sonde <- read_csv("estuary_sonde_data.csv") |>
 species_dictionary <- read_csv("species_dictionary.csv") |>
   clean_names()
 ```
+
 ```{r}
-# 4. STANDARDISE MATCHING COLUMNS 
+metadata <- metadata |>
+  mutate(
+    site = site_name |>
+      str_trim() |>
+      str_to_lower() |>
+      str_replace_all("\\s+", "_")
+  )
+```
+
+```{r}
+# 4. STANDARDISE MATCHING COLUMNS
 
 metadata <- metadata |>
   mutate(
-    site = site |>
+    site = site_name |>
       str_trim() |>
       str_to_lower() |>
       str_replace_all("\\s+", "_")
@@ -91,8 +144,8 @@ species_dictionary <- species_dictionary |>
       str_to_lower() |>
       str_replace_all("\\s+", "_")
   )
-
 ```
+
 
 ```{r}
 names(metadata)
@@ -114,13 +167,14 @@ names(sonde)
 names(species_dictionary)
 ```
 
+
 ```{r}
-# 5. PARSE SONDE DATE/TIME 
+# 5. PARSE SONDE DATE/TIME
 
 sonde <- sonde |>
   mutate(
     date_time = parse_date_time(
-      date_time,
+      timestamp,
       orders = c(
         "ymd HMS",
         "dmy HMS",
@@ -131,8 +185,8 @@ sonde <- sonde |>
       )
     )
   )
-
 ```
+
 
 ```{r}
 # 4. STANDARDISE MATCHING COLUMNS
@@ -713,5 +767,13 @@ ggsave(
   height = 6,
   units = "in"
 )
+```
+
+```{r}
+objects()
+```
+
+```{r}
+names(catch_log)
 ```
 
