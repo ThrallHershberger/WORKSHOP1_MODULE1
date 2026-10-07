@@ -1,0 +1,14 @@
+---
+title: "Keystone exercise"
+author: "Thrall J. Hershberger"
+format: html
+editor: visual
+---
+```{r}
+#Load Packages
+library(tidyverse)
+library(readxl)
+library(lubridate)
+library(janitor)
+```
+
