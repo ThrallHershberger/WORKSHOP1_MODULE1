@@ -12,3 +12,712 @@ library(lubridate)
 library(janitor)
 ```
 
+```{r}
+getwd()
+```
+```{r}
+setwd(C:\Users\jd161719\Desktop\WORKSHOP1_MODULE1\data\workshop2)
+```
+```{r}
+setwd("C:/Users/jd161719/Desktop/WORKSHOP1 MODULE1/data/workshop2")
+```
+
+```{r}
+getwd()
+```
+```{r}
+list.files()
+```
+```{r}
+file.exists("estuary_catch_log.xlsx")
+```
+```{r}
+catch_sheets <- excel_sheets("estuary_catch_log.xlsx")
+```
+
+```{r}
+# Phase 1
+# Find all sheet names
+catch_sheets <- excel_sheets("estuary_catch_log.xlsx")
+
+# Read each sheet and combine into one dataframe
+catch_log <- catch_sheets |>
+  set_names() |>
+  map_dfr(
+    ~ read_excel("estuary_catch_log.xlsx", sheet = .x),
+    .id = "sheet"
+  ) |>
+  clean_names()
+```
+
+```{r}
+# 2. STANDARDISE SITE AND SPECIES NAMES 
+
+catch_log <- catch_log |>
+  mutate(
+    site = site |>
+      str_trim() |>
+      str_to_lower() |>
+      str_replace_all("\\s+", "_"),
+    
+    species = species |>
+      str_trim() |>
+      str_to_lower() |>
+      str_replace_all("\\s+", "_")
+  )
+```
+
+```{r}
+# 3. READ THE OTHER THREE DATASETS 
+
+metadata <- read_csv("estuary_metadata.csv") |>
+  clean_names()
+
+sonde <- read_csv("estuary_sonde_data.csv") |>
+  clean_names()
+
+species_dictionary <- read_csv("species_dictionary.csv") |>
+  clean_names()
+```
+```{r}
+# 4. STANDARDISE MATCHING COLUMNS 
+
+metadata <- metadata |>
+  mutate(
+    site = site |>
+      str_trim() |>
+      str_to_lower() |>
+      str_replace_all("\\s+", "_")
+  )
+
+species_dictionary <- species_dictionary |>
+  mutate(
+    common_name = common_name |>
+      str_trim() |>
+      str_to_lower() |>
+      str_replace_all("\\s+", "_")
+  )
+
+```
+
+```{r}
+names(metadata)
+```
+```{r}
+metadata <- metadata |>
+  mutate(
+    site_name = site_name |>
+      str_trim() |>
+      str_to_lower() |>
+      str_replace_all("\\s+", "_")
+  )
+```
+
+```{r}
+names(catch_log)
+names(metadata)
+names(sonde)
+names(species_dictionary)
+```
+
+```{r}
+# 5. PARSE SONDE DATE/TIME 
+
+sonde <- sonde |>
+  mutate(
+    date_time = parse_date_time(
+      date_time,
+      orders = c(
+        "ymd HMS",
+        "dmy HMS",
+        "mdy HMS",
+        "ymd HM",
+        "dmy HM",
+        "mdy HM"
+      )
+    )
+  )
+
+```
+
+```{r}
+# 4. STANDARDISE MATCHING COLUMNS
+
+metadata <- metadata |>
+  mutate(
+    site_name = site_name |>
+      str_trim() |>
+      str_to_lower() |>
+      str_replace_all("\\s+", "_")
+  )
+
+species_dictionary <- species_dictionary |>
+  mutate(
+    common_name = common_name |>
+      str_trim() |>
+      str_to_lower() |>
+      str_replace_all("\\s+", "_")
+  )
+
+sonde <- sonde |>
+  mutate(
+    site = site |>
+      str_trim() |>
+      str_to_lower() |>
+      str_replace_all("\\s+", "_")
+  )
+```
+
+```{r}
+catch_log <- catch_log |>
+  mutate(
+    site = site |>
+      str_trim() |>
+      str_to_lower() |>
+      str_replace_all("\\s+", "_"),
+    
+    species = species |>
+      str_trim() |>
+      str_to_lower() |>
+      str_replace_all("\\s+", "_")
+  )
+```
+
+```{r}
+sonde <- sonde |>
+  mutate(
+    timestamp = parse_date_time(
+      timestamp,
+      orders = c(
+        "ymd HMS",
+        "dmy HMS",
+        "mdy HMS",
+        "ymd HM",
+        "dmy HM",
+        "mdy HM"
+      )
+    )
+  )
+```
+
+```{r}
+sonde <- sonde |>
+  mutate(
+    turbidity = na_if(turbidity, -999.0)
+  )
+```
+
+```{r}
+sum(sonde$turbidity == -999, na.rm = TRUE)
+```
+
+```{r}
+glimpse(catch_log)
+glimpse(metadata)
+glimpse(sonde)
+glimpse(species_dictionary)
+```
+
+```{r}
+# Create daily water quality summary
+daily_water <- sonde |>
+  mutate(
+    date = floor_date(timestamp, unit = "day")
+  ) |>
+  group_by(site, date) |>
+  summarise(
+    mean_temperature = mean(temperature, na.rm = TRUE),
+    mean_salinity = mean(salinity, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+print(daily_water)
+```
+
+```{r}
+catch_translated <- catch_log |>
+  left_join(
+    species_dictionary,
+    by = join_by(species == common_name)
+  )
+```
+
+```{r}
+catch_translated <- catch_translated |>
+  select(-species) |>
+  rename(species = scientific_name)
+
+print(catch_translated)
+```
+
+```{r}
+class(catch_translated$date)
+class(daily_water$date)
+```
+
+```{r}
+catch_translated <- catch_translated |>
+  mutate(
+    date = parse_date_time(
+      date,
+      orders = c("ymd", "dmy", "mdy")
+    ) |>
+      as.Date()
+  )
+```
+
+```{r}
+daily_water <- daily_water |>
+  mutate(date = as.Date(date))
+```
+
+```{r}
+master_data <- catch_translated |>
+  left_join(
+    metadata,
+    by = join_by(site == site_name)
+  ) |>
+  left_join(
+    daily_water,
+    by = join_by(site, date)
+  )
+
+print(master_data)
+```
+
+```{r}
+glimpse(master_data)
+```
+
+```{r}
+summary(master_data)
+```
+
+```{r}
+
+# PHASE 3: ZERO-CATCH FRAMEWORK
+
+
+master_complete <- master_data |>
+  complete(
+    site,
+    date,
+    species
+  ) |>
+  mutate(
+    count = coalesce(count, 0)
+  )
+
+print(master_complete)
+```
+
+```{r}
+master_complete <- master_data |>
+  complete(
+    site,
+    date,
+    species,
+    fill = list(count = NA)
+  ) |>
+  mutate(
+    count = coalesce(count, 0)
+  )
+```
+
+```{r}
+catch_complete <- catch_translated |>
+  complete(
+    site,
+    date,
+    species
+  ) |>
+  mutate(
+    count = coalesce(count, 0)
+  )
+```
+
+```{r}
+master_complete <- catch_complete |>
+  left_join(
+    metadata,
+    by = join_by(site == site_name)
+  ) |>
+  left_join(
+    daily_water,
+    by = join_by(site, date)
+  )
+```
+
+```{r}
+# PHASE 4: STATISTICAL EXTRACTION
+
+summary_table <- master_complete |>
+  group_by(species, zone) |>
+  summarise(
+    mean_catch = mean(count, na.rm = TRUE),
+    se_catch = sd(count, na.rm = TRUE) / sqrt(sum(!is.na(count))),
+    
+    mean_salinity = mean(mean_salinity, na.rm = TRUE),
+    se_salinity = sd(mean_salinity, na.rm = TRUE) / 
+                  sqrt(sum(!is.na(mean_salinity))),
+    
+    .groups = "drop"
+  )
+
+print(summary_table)
+```
+
+```{r}
+summary_table_clean <- summary_table |>
+  mutate(
+    catch_mean_se = paste0(
+      round(mean_catch, 2), " ± ", round(se_catch, 2)
+    ),
+    
+    salinity_mean_se = paste0(
+      round(mean_salinity, 2), " ± ", round(se_salinity, 2)
+    )
+  ) |>
+  select(
+    species,
+    zone,
+    catch_mean_se,
+    salinity_mean_se
+  )
+
+print(summary_table_clean)
+```
+
+```{r}
+# PHASE 5: VISUAL COMMUNICATION
+ggplot(
+  master_complete,
+  aes(x = mean_salinity, y = count)
+) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(
+    method = "lm",
+    se = TRUE
+  ) +
+  facet_wrap(
+    ~ species
+  ) +
+  labs(
+    x = "Mean daily salinity (PSU)",
+    y = "Fish abundance (count)",
+    title = "Fish abundance along the estuarine salinity gradient"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+master_complete <- master_complete |>
+  mutate(
+    species_label = paste0(
+      "italic('", species, "')"
+    )
+  )
+```
+
+```{r}
+ggplot(
+  master_complete,
+  aes(x = mean_salinity, y = count)
+) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(
+    method = "lm",
+    se = TRUE
+  ) +
+  facet_wrap(
+    ~ species_label,
+    labeller = label_parsed
+  ) +
+  labs(
+    x = "Mean daily salinity (PSU)",
+    y = "Fish abundance (count)",
+    title = "Fish abundance along the estuarine salinity gradient"
+  ) +
+  theme_minimal()
+```
+```{r}
+unique(master_complete$zone)
+```
+```{r}
+master_complete <- master_complete |>
+  mutate(
+    zone = factor(
+      zone,
+      levels = c("upstream", "mid_estuary", "downstream")
+    )
+  )
+```
+
+```{r}
+levels(master_complete$zone)
+```
+
+```{r}
+final_plot <- ggplot(
+  master_complete,
+  aes(x = mean_salinity, y = count)
+) +
+  geom_point(
+    aes(shape = zone),
+    alpha = 0.6,
+    size = 2
+  ) +
+  geom_smooth(
+    method = "lm",
+    se = TRUE,
+    linewidth = 0.8
+  ) +
+  facet_wrap(
+    ~ species_label,
+    labeller = label_parsed,
+    ncol = 2
+  ) +
+  labs(
+    title = "Fish abundance along the estuarine salinity gradient",
+    x = "Mean daily salinity (PSU)",
+    y = "Fish abundance (count)",
+    shape = "Estuary zone"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(
+      face = "bold",
+      size = 15
+    ),
+    axis.title = element_text(
+      face = "bold"
+    ),
+    strip.text = element_text(
+      size = 11
+    ),
+    panel.grid.minor = element_blank()
+  )
+
+final_plot
+```
+
+```{r}
+unique(master_data$zone)
+```
+
+```{r}
+unique(metadata$zone)
+```
+
+```{r}
+master_complete <- master_complete |>
+  mutate(
+    zone = factor(
+      zone,
+      levels = c("Upstream", "Middle", "Downstream")
+    )
+  )
+```
+
+```{r}
+table(master_complete$zone, useNA = "ifany")
+```
+```{r}
+unique(metadata$zone)
+```
+```{r}
+table(metadata$zone)
+```
+
+```{r}
+master_complete <- catch_translated |>
+  complete(
+    site,
+    date,
+    species
+  ) |>
+  mutate(
+    count = coalesce(count, 0)
+  ) |>
+  left_join(
+    metadata,
+    by = join_by(site == site_name)
+  ) |>
+  left_join(
+    daily_water,
+    by = join_by(site, date)
+  )
+```
+
+```{r}
+table(master_complete$zone, useNA = "ifany")
+```
+
+```{r}
+unique(metadata$zone)
+```
+
+```{r}
+master_complete <- master_complete |>
+  mutate(
+    zone = factor(
+      zone,
+      levels = c("Upstream", "Middle", "Downstream")
+    )
+  )
+```
+
+```{r}
+unique(metadata$zone)
+```
+
+```{r}
+master_complete <- catch_translated |>
+  complete(
+    site,
+    date,
+    species
+  ) |>
+  mutate(
+    count = coalesce(count, 0)
+  ) |>
+  left_join(
+    metadata,
+    by = join_by(site == site_name)
+  ) |>
+  left_join(
+    daily_water,
+    by = join_by(site, date)
+  )
+```
+
+```{r}
+master_complete <- master_complete |>
+  mutate(
+    zone = factor(
+      zone,
+      levels = c(
+        "Upstream",
+        "Middle",
+        "Downstream",
+        "Marine"
+      )
+    )
+  )
+```
+
+```{r}
+table(master_complete$zone, useNA = "ifany")
+```
+
+```{r}
+master_complete <- master_complete |>
+  mutate(
+    species_label = paste0(
+      "italic('", species, "')"
+    )
+  )
+```
+
+```{r}
+final_plot <- ggplot(
+  master_complete,
+  aes(
+    x = mean_salinity,
+    y = count,
+    shape = zone
+  )
+) +
+  geom_point(
+    alpha = 0.6,
+    size = 2
+  ) +
+  geom_smooth(
+    method = "lm",
+    se = TRUE,
+    linewidth = 0.8
+  ) +
+  facet_wrap(
+    ~ species_label,
+    labeller = label_parsed,
+    ncol = 2
+  ) +
+  labs(
+    title = "Fish abundance along the estuarine salinity gradient",
+    x = "Mean daily salinity (PSU)",
+    y = "Fish abundance (count)",
+    shape = "Estuary zone"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.title = element_text(face = "bold"),
+    strip.text = element_text(size = 11),
+    panel.grid.minor = element_blank()
+  )
+
+final_plot
+```
+
+```{r}
+final_plot <- ggplot(
+  master_complete,
+  aes(x = mean_salinity, y = count)
+) +
+  geom_point(
+    aes(shape = zone),
+    alpha = 0.6,
+    size = 2
+  ) +
+  geom_smooth(
+    method = "lm",
+    se = TRUE,
+    linewidth = 0.8
+  ) +
+  facet_wrap(
+    ~ species_label,
+    labeller = label_parsed,
+    ncol = 2
+  ) +
+  labs(
+    title = "Fish abundance along the estuarine salinity gradient",
+    x = "Mean daily salinity (PSU)",
+    y = "Fish abundance (count)",
+    shape = "Estuary zone"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.title = element_text(face = "bold"),
+    strip.text = element_text(size = 11),
+    panel.grid.minor = element_blank()
+  )
+
+final_plot
+```
+
+```{r}
+ggsave(
+  filename = "fish_abundance_salinity_final.png",
+  plot = final_plot,
+  width = 8,
+  height = 6,
+  units = "in",
+  dpi = 300
+)
+```
+
+```{r}
+file.exists("fish_abundance_salinity_final.png")
+```
+
+```{r}
+ggsave(
+  filename = "fish_abundance_salinity_final.pdf",
+  plot = final_plot,
+  width = 8,
+  height = 6,
+  units = "in"
+)
+```
+
