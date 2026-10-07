@@ -4,6 +4,48 @@ author: "Thrall H."
 format: html
 editor: visual
 ---
+---
+title: "WKSHP1 FINAL QMD CODE"
+
+format:
+  html:
+    theme: cosmo
+    highlight-style: a11y
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    toc-title: "Contents"
+    number-sections: true
+    code-fold: true
+    code-summary: "Show code"
+    code-tools: true
+    code-copy: true
+    embed-resources: true
+    df-print: paged
+    fig-height: 5
+    fig-width: 8
+    fig-responsive: true
+    smooth-scroll: true
+---
+
+# Load packages
+```{r}
+#| include: false
+library(tidyverse)
+```
+
+# Load penguin dataset
+```{r}
+getwd()
+penguins <- read_csv(here::here("data/penguins.csv"))
+```
+# Initial investigations
+```{r}
+head(penguins)
+str(penguins)
+```
+
+
 
 ```{r}
 mass_compare_plot <- penguins |>
@@ -82,4 +124,3 @@ mass_summary
 ```{r}
 
 ```
-

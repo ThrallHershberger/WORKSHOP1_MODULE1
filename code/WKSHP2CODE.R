@@ -89,3 +89,57 @@ df |>
 #> 5 C     bp1           120
 #> 6 C     bp2           125
 
+cms_patient_experience
+#> # A tibble: 500 × 5
+#>   org_pac_id org_nm                     measure_cd   measure_title   prf_rate
+#>   <chr>      <chr>                      <chr>        <chr>              <dbl>
+#> 1 0446157747 USC CARE MEDICAL GROUP INC CAHPS_GRP_1  CAHPS for MIPS...       63
+#> 2 0446157747 USC CARE MEDICAL GROUP INC CAHPS_GRP_2  CAHPS for MIPS...       87
+#> 3 0446157747 USC CARE MEDICAL GROUP INC CAHPS_GRP_3  CAHPS for MIPS...       86
+#> 4 0446157747 USC CARE MEDICAL GROUP INC CAHPS_GRP_5  CAHPS for MIPS...       57
+#> 5 0446157747 USC CARE MEDICAL GROUP INC CAHPS_GRP_8  CAHPS for MIPS...       85
+#> 6 0446157747 USC CARE MEDICAL GROUP INC CAHPS_GRP_12 CAHPS for MIPS...       24
+#> # ℹ 494 more rows
+
+cms_patient_experience |> 
+  distinct(measure_cd, measure_title)
+#> # A tibble: 6 × 2
+#>   measure_cd   measure_title                                                 
+#>   <chr>        <chr>                                                         
+#> 1 CAHPS_GRP_1  CAHPS for MIPS SSM: Getting Timely Care, Appointments, and In...
+#> 2 CAHPS_GRP_2  CAHPS for MIPS SSM: How Well Providers Communicate            
+#> 3 CAHPS_GRP_3  CAHPS for MIPS SSM: Patient's Rating of Provider              
+#> 4 CAHPS_GRP_5  CAHPS for MIPS SSM: Health Promotion and Education            
+#> 5 CAHPS_GRP_8  CAHPS for MIPS SSM: Courteous and Helpful Office Staff        
+#> 6 CAHPS_GRP_12 CAHPS for MIPS SSM: Stewardship of Patient Resources
+
+cms_patient_experience |> 
+  pivot_wider(
+    names_from = measure_cd,
+    values_from = prf_rate
+  )
+#> # A tibble: 500 × 9
+#>   org_pac_id org_nm                   measure_title   CAHPS_GRP_1 CAHPS_GRP_2
+#>   <chr>      <chr>                    <chr>                 <dbl>       <dbl>
+#> 1 0446157747 USC CARE MEDICAL GROUP ... CAHPS for MIPS...          63          NA
+#> 2 0446157747 USC CARE MEDICAL GROUP ... CAHPS for MIPS...          NA          87
+#> 3 0446157747 USC CARE MEDICAL GROUP ... CAHPS for MIPS...          NA          NA
+#> 4 0446157747 USC CARE MEDICAL GROUP ... CAHPS for MIPS...          NA
+
+cms_patient_experience |> 
+  pivot_wider(
+    id_cols = starts_with("org"),
+    names_from = measure_cd,
+    values_from = prf_rate
+  )
+#> # A tibble: 95 × 8
+#>   org_pac_id org_nm           CAHPS_GRP_1 CAHPS_GRP_2 CAHPS_GRP_3 CAHPS_GRP_5
+#>   <chr>      <chr>                  <dbl>       <dbl>       <dbl>       <dbl>
+#> 1 0446157747 USC CARE MEDICA...          63          87          86          57
+#> 2 0446162697 ASSOCIATION OF ...          59          85          83          63
+#> 3 0547164295 BEAVER MEDICAL ...          49          NA          75          44
+#> 4 0749333730 CAPE PHYSICIANS...          67          84          85          65
+#> 5 0840104360 ALLIANCE PHYSIC...          66          87          87          64
+#> 6 0840109864 REX HOSPITAL INC          73          87          84          67
+#> # ℹ 89 more rows
+#> # ℹ 2 more variables: CAHPS_GRP_8 <dbl>, CAHPS_GRP_12 <dbl>
