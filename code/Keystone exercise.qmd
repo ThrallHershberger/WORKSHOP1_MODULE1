@@ -15,12 +15,6 @@ library(janitor)
 ```{r}
 getwd()
 ```
-```{r}
-setwd(C:\Users\jd161719\Desktop\WORKSHOP1_MODULE1\data\workshop2)
-```
-```{r}
-setwd("C:/Users/jd161719/Desktop/WORKSHOP1 MODULE1/data/workshop2")
-```
 
 ```{r}
 getwd()
